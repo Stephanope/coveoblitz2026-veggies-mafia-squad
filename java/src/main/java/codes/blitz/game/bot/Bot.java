@@ -35,4 +35,56 @@ public class Bot {
     // You can clearly do better than the random actions above. Have fun!!
     return actions;
   }
+
+  public boolean isSpawnerInDanger(Spawner spawner, GameWorld world, TeamGameState gameMessage) {
+    String myTeamId = gameMessage.yourTeamId();
+    int spawnerX = spawner.position().x();
+    int spawnerY = spawner.position().y();
+
+    for (Spore potentialEnemy : world.spores()) {
+        if (!potentialEnemy.teamId().equals(myTeamId)) {
+            
+            if (potentialEnemy.biomass() < 2) {
+                continue; 
+            }
+
+            int enemyX = potentialEnemy.position().x();
+            int enemyY = potentialEnemy.position().y();
+            
+            int distance = Math.abs(enemyX - spawnerX) + Math.abs(enemyY - spawnerY);
+
+            if (distance <= 3) {
+                System.out.println("ALERTE");
+                return true; 
+            }
+        }
+    }
+    return false;
+}
+
+public int getThreatLevel(Spore mySpore, GameWorld world, TeamGameState gameMessage) {
+    String myTeamId = gameMessage.yourTeamId();
+    int myX = mySpore.position().x();
+    int myY = mySpore.position().y();
+    
+    int maxEnemyBiomass = 0;
+
+    for (Spore otherSpore : world.spores()) {
+        if (!otherSpore.teamId().equals(myTeamId)) {
+            
+            int otherX = otherSpore.position().x();
+            int otherY = otherSpore.position().y();
+
+            int distance = Math.abs(otherX - myX) + Math.abs(otherY - myY);
+
+            if (distance <= 3) {
+                if (otherSpore.biomass() > maxEnemyBiomass) {
+                    maxEnemyBiomass = otherSpore.biomass();
+                }
+            }
+        }
+    }
+    return maxEnemyBiomass;
+}
+
 }
