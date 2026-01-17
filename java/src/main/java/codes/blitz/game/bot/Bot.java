@@ -16,6 +16,7 @@ public class Bot {
   boolean initialized = false;
   List<Nutrient> nutrientPositions;
   String teamId;
+  int lastIncome = 0;
 
   public Bot() {
     System.out.println("Initializing your super mega duper bot");
@@ -37,6 +38,11 @@ public List<Nutrient> getNutrients(GameMap map) {
     
     public List<Action> getActions(TeamGameState gameMessage) {
         List<Action> actions = new ArrayList<>();
+        String myTeamId = gameMessage.yourTeamId();
+        int myNutrients = gameMessage.world().teamInfos().get(myTeamId).nutrients();
+        List<Spore> mySpores = gameMessage.world().teamInfos().get(myTeamId).spores();
+        List<Spawner> mySpawners = gameMessage.world().teamInfos().get(myTeamId).spawners();
+        TeamInfo myTeam = gameMessage.world().teamInfos().get(teamId);
 
         if (!initialized) {
             teamId = gameMessage.yourTeamId();
@@ -44,21 +50,14 @@ public List<Nutrient> getNutrients(GameMap map) {
             initialized = true;
         }
 
-        
-
-    String myTeamId = gameMessage.yourTeamId();
-    List<Spore> mySpores = gameMessage.world().teamInfos().get(myTeamId).spores();
-    List<Spawner> mySpawners = gameMessage.world().teamInfos().get(myTeamId).spawners();
-    int myNutrients = gameMessage.world().teamInfos().get(myTeamId).nutrients();
-    TeamInfo myTeam = gameMessage.world().teamInfos().get(teamId);
-
   // SPAWNERS ON NUTRIENTS
     for (int i = 0; i < mySpores.size(); i++) {
     Spore spore = mySpores.get(i);
   
     for(int j = 0; j < nutrientPositions.size(); j++) {
         
-        if (getDistanceFromSpawner(spore.position(), gameMessage.world()) > 5 && myNutrients > 1) {
+        if (getDistanceFromSpawner(spore.position(), gameMessage.world()) > 5 && lastIncome != 0 && myNutrients - lastIncome > 1) {
+            System.out.println(myNutrients);
             if (spawnerCost(mySpawners.size()) <= spore.biomass()) {
               actions.add(new SporeCreateSpawnerAction(spore.id()));
             }
@@ -67,6 +66,10 @@ public List<Nutrient> getNutrients(GameMap map) {
      }
 
     }
+    lastIncome = myNutrients - lastIncome;
+    lastIncome = myNutrients;
+
+     // TOTAL STRENGTH CALCULATION
 
     int totalStrength = 0;
     for(int i = 0; i < mySpores.size(); i++) {
