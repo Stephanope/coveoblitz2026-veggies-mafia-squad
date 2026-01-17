@@ -6,6 +6,12 @@ import java.util.List;
 import java.util.Random;
 
 public class Bot {
+  private final Position[] DIRECTIONS = {
+    new Position(0, -1), // Haut
+    new Position(0, 1),  // Bas
+    new Position(-1, 0), // Gauche
+    new Position(1, 0)   // Droite
+};
   Random random = new Random();
   boolean initialized = false;
   List<Nutrient> nutrientPositions;
@@ -59,12 +65,8 @@ public List<Nutrient> getNutrients(GameMap map) {
     // TODO implement
     for ( Spore spore: myTeam.spores()) {
       Position nutrientPosition = findClosestNutriment(spore, world);
-      //System.out.println("Spore at position: " + sporePos);
-      System.out.println(" nutriend Id: " + world.ownershipGrid()[nutrientPosition.x()][nutrientPosition.y()]);
       if(nutrientPosition == null) {
-       actions.add(new SporeMoveAction(
-              spore.id(),
-              new Position(0, 1))); 
+       moveToClosestNonOwnedTile(world, spore, actions);
        }else{      
         actions.add(new SporeMoveToAction(
               spore.id(),
@@ -82,7 +84,7 @@ public List<Nutrient> getNutrients(GameMap map) {
      System.out.println("Team ID: " + teamId);
     for (Nutrient nutrient : nutrientPositions) {
       
-      if(!getNutrientOwnership(world, nutrient.position()).equals(teamId)){
+      if(!getTileOwnership(world, nutrient.position()).equals(teamId)){
         Position target = nutrient.position();
         int distance = Math.abs(sporePos.x() - target.x()) 
                      + Math.abs(sporePos.y() - target.y());
@@ -94,9 +96,31 @@ public List<Nutrient> getNutrients(GameMap map) {
   }
     return bestPos; 
   }
-  String getNutrientOwnership(GameWorld world, Position pos) {
+  String getTileOwnership(GameWorld world, Position pos) {
     return world.ownershipGrid()[pos.x()][pos.y()];
   }
+  Position nextPos(int x, int y, Position pos) {
+    return new Position(x + pos.x(), y + pos.y());
+  }
+ 
+  void moveToClosestNonOwnedTile(GameWorld world, Spore spore, List<Action> actions) {
+    Position currentPos = spore.position();
+    for (Position dir : DIRECTIONS) {
+        int targetX = currentPos.x() + dir.x();
+        int targetY = currentPos.y() + dir.y();
+        if (targetX >= 0 && targetX < world.map().width() && 
+            targetY >= 0 && targetY < world.map().height()) {
+            String tileOwner =getTileOwnership(world, new Position(targetX, targetY));
+            if (!tileOwner.equals(teamId)) {
+              System.out.println("Moving spore " + spore.id() + " to non-owned tile at (" + targetX + ", " + targetY + ")");
+                actions.add(new SporeMoveAction(spore.id(), dir));
+                return;
+            }
+        }
+    }
+    Position randomDir = DIRECTIONS[random.nextInt(DIRECTIONS.length)];
+    actions.add(new SporeMoveAction(spore.id(), randomDir));
+}
 }
 
 
