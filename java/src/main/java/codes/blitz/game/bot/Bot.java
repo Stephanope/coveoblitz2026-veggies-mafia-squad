@@ -63,11 +63,11 @@ public class Bot {
 
                 if (nextStep != null) {
                     actions.add(new SporeMoveToAction(spore.id(), nextStep));
-                } else {
+                } 
+            }else {
 
                     moveToClosestNonOwnedTile(world, spore, actions);
                 }
-            }
         }
     }
 
