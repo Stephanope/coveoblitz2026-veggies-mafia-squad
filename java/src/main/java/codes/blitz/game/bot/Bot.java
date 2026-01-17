@@ -87,4 +87,27 @@ public int getThreatLevel(Spore mySpore, GameWorld world, TeamGameState gameMess
     return maxEnemyBiomass;
 }
 
+public List<Position> getMyNutrientTiles(GameWorld world, String myTeamId) {
+    List<Position> richTiles = new ArrayList<>();
+    
+    int width = world.map().width();
+    int height = world.map().height();
+    int[][] nutrientGrid = world.map().nutrientGrid();
+    String[][] ownershipGrid = world.ownershipGrid();
+
+    for (int x = 0; x < width; x++) {
+        for (int y = 0; y < height; y++) {
+            
+            String tileOwner = ownershipGrid[x][y];
+            
+            int nutrients = nutrientGrid[x][y];
+
+            if (tileOwner != null && tileOwner.equals(myTeamId) && nutrients >= 1) {
+                richTiles.add(new Position(x, y));
+            }
+        }
+    }
+    
+    return richTiles;
+}
 }
