@@ -9,4 +9,6 @@ package codes.blitz.game.generated;
  * @param position Current position of the spore.
  * @param biomass Current biomass level determining combat strength.
  */
-public record Spore(String id, String teamId, Position position, int biomass) {}
+public record Spore(String id, String teamId, Position position, int biomass) {
+    
+}
