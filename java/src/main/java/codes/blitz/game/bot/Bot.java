@@ -58,7 +58,7 @@ public List<Nutrient> getNutrients(GameMap map) {
   
     for(int j = 0; j < nutrientPositions.size(); j++) {
         
-        if (getDistanceFromSpawner(spore.position(), gameMessage.world()) > 3 && myNutrients > 1) {
+        if (getDistanceFromSpawner(spore.position(), gameMessage.world()) > 5 && myNutrients > 1) {
             if (spawnerCost(mySpawners.size()) <= spore.biomass()) {
               actions.add(new SporeCreateSpawnerAction(spore.id()));
             }
@@ -75,14 +75,14 @@ public List<Nutrient> getNutrients(GameMap map) {
     
      // EARLY GAME
      if (mySpawners.size() > 0) {
-        if (myNutrients <= 100) {
+        if (myNutrients <= 150) {
             if (totalStrength < 50 && mySpores.size() < 6) {
                 actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getLast().id(), 10));
             }
         }
         
         // MID GAME
-        else if (myNutrients > 100 && myNutrients < 1000) {
+        else if (myNutrients > 150 && myNutrients < 1000) {
                  if (totalStrength < 250 && mySpores.size() < 12) {
                     actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getLast().id(), myNutrients / 5));
 
@@ -98,10 +98,10 @@ public List<Nutrient> getNutrients(GameMap map) {
 
     // IF ELSE INITAL POUR LE DEBUT DE PARTIE
         if (myTeam.spawners().isEmpty() && !myTeam.spores().isEmpty()) {
-            actions.add(new SporeCreateSpawnerAction(myTeam.spores().getFirst().id()));
+            actions.add(new SporeCreateSpawnerAction(myTeam.spores().getLast().id()));
         } else if (myTeam.spawners().isEmpty() && myTeam.spores().isEmpty()) {
         } else if (myTeam.spores().isEmpty()) {
-        actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getFirst().id(), myNutrients / 5));
+        actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getLast().id(), myNutrients / 5));
         } else {
             walkToClosestNutriment(myTeam, gameMessage, actions);
             
