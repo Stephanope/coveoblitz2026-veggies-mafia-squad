@@ -65,9 +65,7 @@ public List<Nutrient> getNutrients(GameMap map) {
        actions.add(new SporeMoveAction(
               spore.id(),
               new Position(0, 1))); 
-       }else{
-
-             
+       }else{      
         actions.add(new SporeMoveToAction(
               spore.id(),
               nutrientPosition));
