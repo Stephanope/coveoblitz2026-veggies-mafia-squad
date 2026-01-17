@@ -16,6 +16,7 @@ public class Bot {
   boolean initialized = false;
   List<Nutrient> nutrientPositions;
   String teamId;
+  int lastIncome = 0;
 
   public Bot() {
     System.out.println("Initializing your super mega duper bot");
@@ -37,6 +38,11 @@ public List<Nutrient> getNutrients(GameMap map) {
     
     public List<Action> getActions(TeamGameState gameMessage) {
         List<Action> actions = new ArrayList<>();
+        String myTeamId = gameMessage.yourTeamId();
+        int myNutrients = gameMessage.world().teamInfos().get(myTeamId).nutrients();
+        List<Spore> mySpores = gameMessage.world().teamInfos().get(myTeamId).spores();
+        List<Spawner> mySpawners = gameMessage.world().teamInfos().get(myTeamId).spawners();
+        TeamInfo myTeam = gameMessage.world().teamInfos().get(teamId);
 
         if (!initialized) {
             teamId = gameMessage.yourTeamId();
@@ -44,21 +50,14 @@ public List<Nutrient> getNutrients(GameMap map) {
             initialized = true;
         }
 
-        
-
-    String myTeamId = gameMessage.yourTeamId();
-    List<Spore> mySpores = gameMessage.world().teamInfos().get(myTeamId).spores();
-    List<Spawner> mySpawners = gameMessage.world().teamInfos().get(myTeamId).spawners();
-    int myNutrients = gameMessage.world().teamInfos().get(myTeamId).nutrients();
-    TeamInfo myTeam = gameMessage.world().teamInfos().get(teamId);
-
   // SPAWNERS ON NUTRIENTS
     for (int i = 0; i < mySpores.size(); i++) {
     Spore spore = mySpores.get(i);
   
     for(int j = 0; j < nutrientPositions.size(); j++) {
         
-        if (getDistanceFromSpawner(spore.position(), gameMessage.world()) > 3 && myNutrients > 1) {
+        if (getDistanceFromSpawner(spore.position(), gameMessage.world()) > 5 && lastIncome != 0 && myNutrients - lastIncome > 1) {
+            System.out.println(myNutrients);
             if (spawnerCost(mySpawners.size()) <= spore.biomass()) {
               actions.add(new SporeCreateSpawnerAction(spore.id()));
             }
@@ -67,6 +66,10 @@ public List<Nutrient> getNutrients(GameMap map) {
      }
 
     }
+    lastIncome = myNutrients - lastIncome;
+    lastIncome = myNutrients;
+
+     // TOTAL STRENGTH CALCULATION
 
     int totalStrength = 0;
     for(int i = 0; i < mySpores.size(); i++) {
@@ -75,14 +78,14 @@ public List<Nutrient> getNutrients(GameMap map) {
     
      // EARLY GAME
      if (mySpawners.size() > 0) {
-        if (myNutrients <= 100) {
+        if (myNutrients <= 150) {
             if (totalStrength < 50 && mySpores.size() < 6) {
                 actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getLast().id(), 10));
             }
         }
         
         // MID GAME
-        else if (myNutrients > 100 && myNutrients < 1000) {
+        else if (myNutrients > 150 && myNutrients < 1000) {
                  if (totalStrength < 250 && mySpores.size() < 12) {
                     actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getLast().id(), myNutrients / 5));
 
@@ -98,10 +101,10 @@ public List<Nutrient> getNutrients(GameMap map) {
 
     // IF ELSE INITAL POUR LE DEBUT DE PARTIE
         if (myTeam.spawners().isEmpty() && !myTeam.spores().isEmpty()) {
-            actions.add(new SporeCreateSpawnerAction(myTeam.spores().getFirst().id()));
+            actions.add(new SporeCreateSpawnerAction(myTeam.spores().getLast().id()));
         } else if (myTeam.spawners().isEmpty() && myTeam.spores().isEmpty()) {
         } else if (myTeam.spores().isEmpty()) {
-        actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getFirst().id(), myNutrients / 5));
+        actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getLast().id(), myNutrients / 5));
         } else {
             walkToClosestNutriment(myTeam, gameMessage, actions);
             
@@ -340,8 +343,8 @@ private boolean isValid(int x, int y, int width, int height) {
                 if (distance <= 3) {
                    if (distance <= 3) {
                     
-                   if (potentialEnemy.biomass()< myNutrients / 5 && !(getAllyLevel(potentialEnemy, world, gameMessage) > potentialEnemy.biomass())) {
-                     actions.add(new SpawnerProduceSporeAction(spawner.id(), myNutrients / 5));
+                   if (potentialEnemy.biomass()< myNutrients / 2 && !(getAllyLevel(potentialEnemy, world, gameMessage) > potentialEnemy.biomass())) {
+                     actions.add(new SpawnerProduceSporeAction(spawner.id(), potentialEnemy.biomass() + 5));
                    }
                     
                    }
