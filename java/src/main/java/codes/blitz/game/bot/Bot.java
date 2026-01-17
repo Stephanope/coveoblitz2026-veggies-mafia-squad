@@ -44,41 +44,71 @@ public List<Nutrient> getNutrients(GameMap map) {
             initialized = true;
         }
 
+        
+
     String myTeamId = gameMessage.yourTeamId();
     List<Spore> mySpores = gameMessage.world().teamInfos().get(myTeamId).spores();
-  List<Spawner> mySpawners = gameMessage.world().teamInfos().get(myTeamId).spawners();
+    List<Spawner> mySpawners = gameMessage.world().teamInfos().get(myTeamId).spawners();
+    int myNutrients = gameMessage.world().teamInfos().get(myTeamId).nutrients();
+    TeamInfo myTeam = gameMessage.world().teamInfos().get(teamId);
 
-  for (int i = 0; i < mySpores.size(); i++) {
-  Spore spore = mySpores.get(i);
+  // SPAWNERS ON NUTRIENTS
+    for (int i = 0; i < mySpores.size(); i++) {
+    Spore spore = mySpores.get(i);
   
     for(int j = 0; j < nutrientPositions.size(); j++) {
-        Nutrient nutrient = nutrientPositions.get(j);
         
-        if (nutrient.position().equals(spore.position())) {
-            
+        if (getDistanceFromSpawner(spore.position(), gameMessage.world()) > 3 && myNutrients > 1) {
             if (spawnerCost(mySpawners.size()) <= spore.biomass()) {
               actions.add(new SporeCreateSpawnerAction(spore.id()));
             }
-            
               break; 
-          }
       }
+     }
+
     }
 
-        TeamInfo myTeam = gameMessage.world().teamInfos().get(teamId);
+    int totalStrength = 0;
+    for(int i = 0; i < mySpores.size(); i++) {
+        totalStrength += mySpores.get(i).biomass();
+    }
+    
+     // EARLY GAME
+     if (mySpawners.size() > 0) {
+        if (myNutrients <= 100) {
+            if (totalStrength < 50 && mySpores.size() < 6) {
+                actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getLast().id(), 10));
+            }
+        }
         
+        // MID GAME
+        else if (myNutrients > 100 && myNutrients < 1000) {
+                 if (totalStrength < 250 && mySpores.size() < 12) {
+                    actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getLast().id(), myNutrients / 5));
+
+            }
+        }
+        
+        // END GAME
+        else if (myNutrients >= 1000) {
+            actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getLast().id(), myNutrients));
+        }
+    }
+
+
+    // IF ELSE INITAL POUR LE DEBUT DE PARTIE
         if (myTeam.spawners().isEmpty() && !myTeam.spores().isEmpty()) {
             actions.add(new SporeCreateSpawnerAction(myTeam.spores().getFirst().id()));
         } else if (myTeam.spawners().isEmpty() && myTeam.spores().isEmpty()) {
         } else if (myTeam.spores().isEmpty()) {
-            actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getFirst().id(), 20));
+        actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getFirst().id(), myNutrients / 5));
         } else {
             walkToClosestNutriment(myTeam, gameMessage, actions);
             
             for (Spawner spawner : myTeam.spawners()) {
-                if (isSpawnerInDanger(spawner, gameMessage.world(), gameMessage)) {
+                if (isSpawnerInDanger(spawner, gameMessage.world(), gameMessage, actions)) {
                     if (myTeam.nutrients() >= 20) {
-                        actions.add(new SpawnerProduceSporeAction(spawner.id(), 20));
+                        actions.add(new SpawnerProduceSporeAction(spawner.id(), myNutrients / 5));
                     }
                 }
             }
@@ -87,27 +117,20 @@ public List<Nutrient> getNutrients(GameMap map) {
         return actions;
     }
 
-    public void walkToClosestNutriment(TeamInfo myTeam, TeamGameState gameMessage, List<Action> actions) {
-        GameWorld world = gameMessage.world();
-        String neutralTeamId = gameMessage.constants().neutralTeamId();
-
-        for (Spore spore : myTeam.spores()) {
-            Position targetNutrient = findClosestNutriment(spore, world);
-
-            if (targetNutrient != null) {
-                Position nextStep = getNextStepDijkstra(spore, targetNutrient, world, neutralTeamId);
-
-                if (nextStep != null) {
-                    actions.add(new SporeMoveToAction(spore.id(), nextStep));
-                } 
-            }else {
-
-                    moveToClosestNonOwnedTile(world, spore, actions);
+    public int getDistanceFromSpawner(Position pos1, GameWorld world) {
+        int minDistance = Integer.MAX_VALUE;
+        for (Spawner spawner : world.spawners()) {
+            if (spawner.teamId() != null && spawner.teamId().equals(teamId)) {
+                int d = Math.abs(spawner.position().x() - pos1.x()) + Math.abs(spawner.position().y() - pos1.y());
+                if (d < minDistance) {
+                    minDistance = d;
                 }
+            }
         }
+        return minDistance == Integer.MAX_VALUE ? Integer.MAX_VALUE : minDistance;
     }
 
-    public Position getNextStepDijkstra(Spore spore, Position target, GameWorld world, String neutralTeamId) {
+    public Position getNextStepDijkstra(Spore spore, Position target, GameWorld world, String neutralTeamId, List<Nutrient> nutrientToHunt) {
         Position start = spore.position();
         int width = world.map().width();
         int height = world.map().height();
@@ -185,6 +208,8 @@ public List<Nutrient> getNutrients(GameMap map) {
             while (curr.parent != null && !curr.parent.position.equals(start)) {
                 curr = curr.parent;
             }
+            if(finalNode.cost <= spore.biomass())
+                nutrientToHunt.removeIf(n -> n.position().equals(target));
             return curr.position; 
         }
         System.out.println("Dijkstra: No path found from " + start + " to " + target);
@@ -192,21 +217,24 @@ public List<Nutrient> getNutrients(GameMap map) {
     }
 
 
-  public void walkToClosestNutriment(TeamInfo myTeam, GameWorld world, List<Action> actions) {
-    // TODO implement
-    for ( Spore spore: myTeam.spores()) {
-      Position nutrientPosition = findClosestNutriment(spore, world);
-      if(nutrientPosition == null) {
-       moveToClosestNonOwnedTile(world, spore, actions);
-       }else{      
-        actions.add(new SporeMoveToAction(
-              spore.id(),
-              nutrientPosition));
-      }
-      
+  public void walkToClosestNutriment(TeamInfo myTeam, TeamGameState gameMessage, List<Action> actions) {
+        GameWorld world = gameMessage.world();
+        String neutralTeamId = gameMessage.constants().neutralTeamId();
+        List<Nutrient> tempNutrients = new ArrayList<>(nutrientPositions);
+        for (Spore spore : myTeam.spores()) {
+            Position targetNutrient = findClosestNutriment(spore, world, tempNutrients);
+            if (targetNutrient != null) {
+                Position nextStep = getNextStepDijkstra(spore, targetNutrient, world, neutralTeamId, tempNutrients);
+                
+
+                if (nextStep != null) {
+                    actions.add(new SporeMoveToAction(spore.id(), nextStep));
+                } 
+            }else {
+                    moveToClosestNonOwnedTile(world, spore, actions);
+                }
+        }
     }
-    
-  }
   
   String getTileOwnership(GameWorld world, Position pos) {
     return world.ownershipGrid()[pos.x()][pos.y()];
@@ -215,32 +243,64 @@ public List<Nutrient> getNutrients(GameMap map) {
     return new Position(x + pos.x(), y + pos.y());
   }
  
-  void moveToClosestNonOwnedTile(GameWorld world, Spore spore, List<Action> actions) {
-    Position currentPos = spore.position();
+ void moveToClosestNonOwnedTile(GameWorld world, Spore spore, List<Action> actions) {
+    System.out.println("No nutriment found for spore " + spore.id() + ", searching for non-owned tile.");
+    int width = world.map().width();
+    int height = world.map().height();
+    Position startPos = spore.position();
+    Queue<SearchNode> queue = new LinkedList<>();
+
+    boolean[][] visited = new boolean[width][height];
+
+    visited[startPos.x()][startPos.y()] = true;
     for (Position dir : DIRECTIONS) {
-        int targetX = currentPos.x() + dir.x();
-        int targetY = currentPos.y() + dir.y();
-        if (targetX >= 0 && targetX < world.map().width() && 
-            targetY >= 0 && targetY < world.map().height()) {
-            String tileOwner =getTileOwnership(world, new Position(targetX, targetY));
-            if (!tileOwner.equals(teamId)) {
-              System.out.println("Moving spore " + spore.id() + " to non-owned tile at (" + targetX + ", " + targetY + ")");
-                actions.add(new SporeMoveAction(spore.id(), dir));
-                return;
+        int nx = startPos.x() + dir.x();
+        int ny = startPos.y() + dir.y();
+
+        if (isValid(nx, ny, width, height)) {
+
+            queue.add(new SearchNode(new Position(nx, ny), dir));
+            visited[nx][ny] = true;
+        }
+    }
+    while (!queue.isEmpty()) {
+        SearchNode current = queue.poll();
+        Position currentPos = current.pos;
+        String tileOwner = getTileOwnership(world, currentPos);
+        if (tileOwner == null || !tileOwner.equals(teamId)) {
+
+            actions.add(new SporeMoveToAction(spore.id(), currentPos));
+            return;
+        }
+        for (Position dir : DIRECTIONS) {
+            int nx = currentPos.x() + dir.x();
+            int ny = currentPos.y() + dir.y();
+
+            if (isValid(nx, ny, width, height) && !visited[nx][ny]) {
+                visited[nx][ny] = true;
+                queue.add(new SearchNode(new Position(nx, ny), current.initialDirection));
             }
         }
     }
+
     Position randomDir = DIRECTIONS[random.nextInt(DIRECTIONS.length)];
     actions.add(new SporeMoveAction(spore.id(), randomDir));
 }
 
+private record SearchNode(Position pos, Position initialDirection) {}
 
-    public Position findClosestNutriment(Spore spore, GameWorld world) {
+private boolean isValid(int x, int y, int width, int height) {
+    return x >= 0 && x < width && y >= 0 && y < height;
+}
+
+    public Position findClosestNutriment(Spore spore, GameWorld world, List<Nutrient> nutrientToHunt) {
         Position sporePos = spore.position();
         Position bestPos = null;
         double minDistance = Double.MAX_VALUE;
+        int bestIndex = -1;
 
-        for (Nutrient nutrient : nutrientPositions) {
+        for (int i = 0; i < nutrientToHunt.size(); i++) {
+            Nutrient nutrient = nutrientToHunt.get(i);
             String owner = getTileOwnership(world, nutrient.position());
             boolean isMyNutrient = owner != null && owner.equals(teamId);
             
@@ -251,9 +311,13 @@ public List<Nutrient> getNutrients(GameMap map) {
                 if (distance < minDistance) {
                     minDistance = distance;
                     bestPos = target;
+                    bestIndex = i;
                 }
             }
         }
+        if(bestIndex >= 0) {
+           nutrientToHunt.remove(bestIndex);
+        } 
         return bestPos;
     }
 
@@ -261,18 +325,26 @@ public List<Nutrient> getNutrients(GameMap map) {
     return (int) Math.pow(2, spawnersOnMap) - 1;
   }
 
-    public boolean isSpawnerInDanger(Spawner spawner, GameWorld world, TeamGameState gameMessage) {
+    public boolean isSpawnerInDanger(Spawner spawner, GameWorld world, TeamGameState gameMessage, List<Action> actions) {
         String myTeamId = gameMessage.yourTeamId();
         int spawnerX = spawner.position().x();
         int spawnerY = spawner.position().y();
-    
+        int myNutrients = gameMessage.world().teamInfos().get(myTeamId).nutrients();
+
         for (Spore potentialEnemy : world.spores()) {
-            if (!potentialEnemy.teamId().equals(myTeamId)) {
+            if (!potentialEnemy.teamId().equals(myTeamId) && !potentialEnemy.teamId().equals(gameMessage.constants().neutralTeamId())) {
                 if (potentialEnemy.biomass() < 2) {
                     continue; 
                 }
                 int distance = Math.abs(potentialEnemy.position().x() - spawnerX) + Math.abs(potentialEnemy.position().y() - spawnerY);
                 if (distance <= 3) {
+                   if (distance <= 3) {
+                    
+                   if (potentialEnemy.biomass()< myNutrients / 5 && !(getAllyLevel(potentialEnemy, world, gameMessage) > potentialEnemy.biomass())) {
+                     actions.add(new SpawnerProduceSporeAction(spawner.id(), myNutrients / 5));
+                   }
+                    
+                   }
                     return true; 
                 }
             }
@@ -287,7 +359,7 @@ public List<Nutrient> getNutrients(GameMap map) {
         int maxEnemyBiomass = 0;
     
         for (Spore otherSpore : world.spores()) {
-            if (!otherSpore.teamId().equals(myTeamId)) {
+            if (!otherSpore.teamId().equals(myTeamId) && !otherSpore.teamId().equals(gameMessage.constants().neutralTeamId())) {
                 int distance = Math.abs(otherSpore.position().x() - myX) + Math.abs(otherSpore.position().y() - myY);
                 if (distance <= 3) {
                     if (otherSpore.biomass() > maxEnemyBiomass) {
@@ -298,7 +370,24 @@ public List<Nutrient> getNutrients(GameMap map) {
         }
         return maxEnemyBiomass;
     }
-
+    public int getAllyLevel(Spore mySpore, GameWorld world, TeamGameState gameMessage) {
+        String myTeamId = gameMessage.yourTeamId();
+        int myX = mySpore.position().x();
+        int myY = mySpore.position().y();
+        int maxEnemyBiomass = 0;
+    
+        for (Spore otherSpore : world.spores()) {
+            if (otherSpore.teamId().equals(myTeamId)) {
+                int distance = Math.abs(otherSpore.position().x() - myX) + Math.abs(otherSpore.position().y() - myY);
+                if (distance <= 3) {
+                    if (otherSpore.biomass() > maxEnemyBiomass) {
+                        maxEnemyBiomass = otherSpore.biomass();
+                    }
+                }
+            }
+        }
+        return maxEnemyBiomass;
+    }
 
     public List<Position> getMyNutrientTiles(GameWorld world, String myTeamId) {
         List<Position> richTiles = new ArrayList<>();
