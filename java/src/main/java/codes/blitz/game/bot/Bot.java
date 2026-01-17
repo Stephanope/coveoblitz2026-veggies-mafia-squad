@@ -14,9 +14,6 @@ public class Bot {
     System.out.println("Initializing your super mega duper bot");
   }
 
-
-
-
 public List<Nutrient> getNutrients(GameMap map) {
     List<Nutrient> nutrients = new ArrayList<>();
 
@@ -37,11 +34,33 @@ public List<Nutrient> getNutrients(GameMap map) {
    */
   public List<Action> getActions(TeamGameState gameMessage) {
     List<Action> actions = new ArrayList<>();
+
     if (!initialized && gameMessage.yourTeamId()!= null) {
       teamId = gameMessage.yourTeamId();
       nutrientPositions = getNutrients(gameMessage.world().map());
       initialized = true;
   }
+
+  String myTeamId = gameMessage.yourTeamId();
+  List<Spore> mySpores = gameMessage.world().teamInfos().get(myTeamId).spores();
+  List<Spawner> mySpawners = gameMessage.world().teamInfos().get(myTeamId).spawners();
+
+  for (int i = 0; i < mySpores.size(); i++) {
+  Spore spore = mySpores.get(i);
+  
+    for(int j = 0; j < nutrientPositions.size(); j++) {
+        Nutrient nutrient = nutrientPositions.get(j);
+        
+        if (nutrient.position().equals(spore.position())) {
+            
+            if (spawnerCost(mySpawners.size()) <= spore.biomass()) {
+              actions.add(new SporeCreateSpawnerAction(spore.id()));
+            }
+            
+              break; 
+          }
+      }
+    }
     TeamInfo myTeam = gameMessage.world().teamInfos().get(gameMessage.yourTeamId());
     if (myTeam.spawners().isEmpty()) {
       actions.add(new SporeCreateSpawnerAction(myTeam.spores().getFirst().id()));
@@ -55,12 +74,11 @@ public List<Nutrient> getNutrients(GameMap map) {
     // You can clearly do better than the random actions above. Have fun!!
     return actions;
   }
+
   public void walkToClosestNutriment(TeamInfo myTeam, GameWorld world, List<Action> actions) {
     // TODO implement
     for ( Spore spore: myTeam.spores()) {
       Position nutrientPosition = findClosestNutriment(spore, world);
-      //System.out.println("Spore at position: " + sporePos);
-      System.out.println(" nutriend Id: " + world.ownershipGrid()[nutrientPosition.x()][nutrientPosition.y()]);
       if(nutrientPosition == null) {
        actions.add(new SporeMoveAction(
               spore.id(),
@@ -79,7 +97,6 @@ public List<Nutrient> getNutrients(GameMap map) {
     Position bestPos = null;
 
     double minDistance = Double.MAX_VALUE;
-     System.out.println("Team ID: " + teamId);
     for (Nutrient nutrient : nutrientPositions) {
       
       if(!getNutrientOwnership(world, nutrient.position()).equals(teamId)){
@@ -94,8 +111,13 @@ public List<Nutrient> getNutrients(GameMap map) {
   }
     return bestPos; 
   }
+
   String getNutrientOwnership(GameWorld world, Position pos) {
     return world.ownershipGrid()[pos.x()][pos.y()];
+  }
+
+    public int spawnerCost(int spawnersOnMap) {
+    return (int) Math.pow(2, spawnersOnMap) - 1;
   }
 }
 
