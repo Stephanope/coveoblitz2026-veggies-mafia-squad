@@ -7,7 +7,6 @@ import java.util.Random;
 
 public class Bot {
   Random random = new Random();
-
   public Bot() {
     System.out.println("Initializing your super mega duper bot");
   }
@@ -34,5 +33,14 @@ public class Bot {
 
     // You can clearly do better than the random actions above. Have fun!!
     return actions;
+  }
+  public void walkToClosestNutriment(TeamInfo myTeam, GameWorld world, List<Action> actions) {
+    // TODO implement
+    for ( Spore spore: myTeam.spores()) {
+      
+    }
+  }
+  public void findClosestNutriment(Spore spore) {
+    // TODO implement
   }
 }
