@@ -57,9 +57,8 @@ public List<Nutrient> getNutrients(GameMap map) {
     Spore spore = mySpores.get(i);
   
     for(int j = 0; j < nutrientPositions.size(); j++) {
-        // Nutrient nutrient = nutrientPositions.get(j);
         
-        if (getDistanceFromSpawner(spore.position(), gameMessage.world()) > 3 /*&& nutrient.position().equals(spore.position())*/) {
+        if (getDistanceFromSpawner(spore.position(), gameMessage.world()) > 3 && myNutrients > 1) {
             if (spawnerCost(mySpawners.size()) <= spore.biomass()) {
               actions.add(new SporeCreateSpawnerAction(spore.id()));
             }
@@ -77,14 +76,14 @@ public List<Nutrient> getNutrients(GameMap map) {
      // EARLY GAME
      if (mySpawners.size() > 0) {
         if (myNutrients <= 100) {
-            if (totalStrength < 50) {
+            if (totalStrength < 50 && mySpores.size() < 6) {
                 actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getLast().id(), 10));
             }
         }
         
         // MID GAME
         else if (myNutrients > 100 && myNutrients < 1000) {
-                 if (totalStrength < 250) {
+                 if (totalStrength < 250 && mySpores.size() < 12) {
                     actions.add(new SpawnerProduceSporeAction(myTeam.spawners().getLast().id(), myNutrients / 5));
 
             }
