@@ -11,15 +11,30 @@ public class Bot {
     new Position(-1, 0), // Gauche
     new Position(1, 0)   // Droite
 };
+
   Random random = new Random();
   boolean initialized = false;
   List<Nutrient> nutrientPositions;
   String teamId;
+
   public Bot() {
     System.out.println("Initializing your super mega duper bot");
   }
 
-
+public List<Nutrient> getNutrients(GameMap map) {
+        List<Nutrient> nutrients = new ArrayList<>();
+        var grid = map.nutrientGrid(); 
+        for (int i = 0; i < map.width(); i++) {
+            for (int j = 0; j < map.height(); j++) {
+                int value = grid[i][j]; 
+                if (value > 0) {
+                    nutrients.add(new Nutrient(new Position(i, j), value));
+                }
+            }
+        }
+        return nutrients;
+    }
+    
     public List<Action> getActions(TeamGameState gameMessage) {
         List<Action> actions = new ArrayList<>();
 
@@ -28,6 +43,27 @@ public class Bot {
             nutrientPositions = getNutrients(gameMessage.world().map());
             initialized = true;
         }
+
+    String myTeamId = gameMessage.yourTeamId();
+    List<Spore> mySpores = gameMessage.world().teamInfos().get(myTeamId).spores();
+  List<Spawner> mySpawners = gameMessage.world().teamInfos().get(myTeamId).spawners();
+
+  for (int i = 0; i < mySpores.size(); i++) {
+  Spore spore = mySpores.get(i);
+  
+    for(int j = 0; j < nutrientPositions.size(); j++) {
+        Nutrient nutrient = nutrientPositions.get(j);
+        
+        if (nutrient.position().equals(spore.position())) {
+            
+            if (spawnerCost(mySpawners.size()) <= spore.biomass()) {
+              actions.add(new SporeCreateSpawnerAction(spore.id()));
+            }
+            
+              break; 
+          }
+      }
+    }
 
         TeamInfo myTeam = gameMessage.world().teamInfos().get(teamId);
         
@@ -221,19 +257,9 @@ public class Bot {
         return bestPos;
     }
 
-    public List<Nutrient> getNutrients(GameMap map) {
-        List<Nutrient> nutrients = new ArrayList<>();
-        var grid = map.nutrientGrid(); 
-        for (int i = 0; i < map.width(); i++) {
-            for (int j = 0; j < map.height(); j++) {
-                int value = grid[i][j]; 
-                if (value > 0) {
-                    nutrients.add(new Nutrient(new Position(i, j), value));
-                }
-            }
-        }
-        return nutrients;
-    }
+    public int spawnerCost(int spawnersOnMap) {
+    return (int) Math.pow(2, spawnersOnMap) - 1;
+  }
 
     public boolean isSpawnerInDanger(Spawner spawner, GameWorld world, TeamGameState gameMessage) {
         String myTeamId = gameMessage.yourTeamId();
